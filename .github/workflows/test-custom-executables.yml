@@ -43,7 +43,7 @@ jobs:
       - name: Install Claw Code manually
         run: |
           echo "Installing Claw Code..."
-          curl -fsSL https://claw.ai/install.sh | bash -s latest
+          curl -fsSL https://claw.sc/install.sh | bash -s latest
           echo "Claw Code installed at: $HOME/.local/bin/claw"
 
           # Verify Claw installation

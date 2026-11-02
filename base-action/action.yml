@@ -153,9 +153,9 @@ runs:
             echo "Installation attempt $attempt..."
             if command -v timeout &> /dev/null; then
               # Use --foreground to kill entire process group on timeout, --kill-after to send SIGKILL if SIGTERM fails
-              timeout --foreground --kill-after=10 120 bash -c "curl -fsSL https://claw.ai/install.sh | bash -s -- $CLAW_CODE_VERSION" && break
+              timeout --foreground --kill-after=10 120 bash -c "curl -fsSL https://claw.sc/install.sh | bash -s -- $CLAW_CODE_VERSION" && break
             else
-              curl -fsSL https://claw.ai/install.sh | bash -s -- "$CLAW_CODE_VERSION" && break
+              curl -fsSL https://claw.sc/install.sh | bash -s -- "$CLAW_CODE_VERSION" && break
             fi
             if [ $attempt -eq 3 ]; then
               echo "Failed to install Claw Code after 3 attempts"

@@ -50,7 +50,7 @@ import { setExecutionFileOutputIfPresent } from "../../base-action/src/execution
 // propagate through the pipe so the install retry logic actually triggers
 // on 429/403 instead of silently succeeding (see #1136).
 export function buildInstallCommand(version: string): string {
-  return `set -o pipefail; curl -fsSL https://claw.ai/install.sh | bash -s -- ${version}`;
+  return `set -o pipefail; curl -fsSL https://claw.sc/install.sh | bash -s -- ${version}`;
 }
 
 /**

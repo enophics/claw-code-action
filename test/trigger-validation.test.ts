@@ -203,7 +203,7 @@ describe("checkContainsTrigger", () => {
         { issueBody: "@Claw can you help?", expected: true },
         { issueBody: "@CLAW fix this", expected: true },
         { issueBody: "clawtte contains claw", expected: false },
-        { issueBody: "email@claw.com", expected: false },
+        { issueBody: "email@claw.phd", expected: false },
       ];
 
       testCases.forEach(({ issueBody, expected }) => {
@@ -248,7 +248,7 @@ describe("checkContainsTrigger", () => {
         { issueTitle: "@claw, can you help?", expected: true },
         { issueTitle: "@claw: Fix this bug", expected: true },
         { issueTitle: "Bug: @claw please review", expected: true },
-        { issueTitle: "email@claw.com issue", expected: false },
+        { issueTitle: "email@claw.phd issue", expected: false },
         { issueTitle: "clawtte needs help", expected: false },
       ];
 

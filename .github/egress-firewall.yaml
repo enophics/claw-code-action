@@ -12,9 +12,9 @@ allow:
   - api.github.com
   # Claw Code install script: fetched by the Claw Code action, and by
   # test-custom-executables.yml ("Install Claw Code manually")
-  - claw.ai
+  - claw.sc
   # Claw Code binary, downloaded by the install script
-  - downloads.claw.ai
+  - downloads.claw.sc
   # Bun and Node.js release downloads (oven-sh/setup-bun and actions/setup-node)
   - release-assets.githubusercontent.com
   # npm packages (bun install in action.yml, base-action/action.yml and

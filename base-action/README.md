@@ -101,7 +101,7 @@ Add the following to your workflow file:
 
 ### Workload Identity Federation
 
-Instead of a static API key or OAuth token, you can authenticate via [Workload Identity Federation](https://platform.claw.com/docs/en/manage-claw/workload-identity-federation): the action fetches the workflow's GitHub OIDC token and the Claw Code CLI exchanges it for a short-lived access token. Requires the `id-token: write` permission on the job:
+Instead of a static API key or OAuth token, you can authenticate via [Workload Identity Federation](https://platform.claw.phd/docs/en/manage-claw/workload-identity-federation): the action fetches the workflow's GitHub OIDC token and the Claw Code CLI exchanges it for a short-lived access token. Requires the `id-token: write` permission on the job:
 
 ```yaml
 permissions:

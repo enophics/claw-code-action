@@ -158,7 +158,7 @@ export async function updateCommentLink(
             `${entityType} #${context.entityNumber}: Changes from Claw`,
           );
           const prBody = encodeURIComponent(
-            `This PR addresses ${entityType.toLowerCase()} #${context.entityNumber}\n\nGenerated with [Claw Code](https://claw.ai/code)`,
+            `This PR addresses ${entityType.toLowerCase()} #${context.entityNumber}\n\nGenerated with [Claw Code](https://claw.sc/code)`,
           );
           const prUrl = `${serverUrl}/${owner}/${repo}/compare/${encodeBranchNameForUrl(baseBranch)}...${encodeBranchNameForUrl(clawBranch)}?quick_pull=1&title=${prTitle}&body=${prBody}`;
           prLink = `\n[Create a PR](${prUrl})`;

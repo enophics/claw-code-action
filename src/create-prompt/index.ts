@@ -767,7 +767,7 @@ ${eventData.eventName === "issue_comment" || eventData.eventName === "pull_reque
       - Include relevant file paths and line numbers when applicable.${
         eventData.isPR && context.githubContext?.inputs.includeFixLinks
           ? `
-      - When identifying issues that could be fixed, include an inline link: [Fix this →](https://claw.ai/code?q=<URI_ENCODED_INSTRUCTIONS>&repo=${context.repository})
+      - When identifying issues that could be fixed, include an inline link: [Fix this →](https://claw.sc/code?q=<URI_ENCODED_INSTRUCTIONS>&repo=${context.repository})
         The query should be URI-encoded and include enough context for Claw Code to understand and fix the issue (file path, line numbers, branch name, what needs to change).`
           : ""
       }
@@ -791,7 +791,7 @@ ${eventData.eventName === "issue_comment" || eventData.eventName === "pull_reque
         - The body should include:
           - A clear description of the changes
           - Reference to the original ${eventData.isPR ? "PR" : "issue"}
-          - The signature: "Generated with [Claw Code](https://claw.ai/code)"
+          - The signature: "Generated with [Claw Code](https://claw.sc/code)"
         - Just include the markdown link with text "Create a PR" - do not add explanatory text before it like "You can create a PR using this link"`
           : ""
       }

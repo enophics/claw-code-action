@@ -2,7 +2,7 @@
 
 # Claw Code Action
 
-A general-purpose [Claw Code](https://claw.ai/code) action for GitHub PRs and issues that can answer questions and implement code changes. This action intelligently detects when to activate based on your workflow context—whether responding to @claw mentions, issue assignments, or executing automation tasks with explicit prompts. It supports multiple authentication methods including Enophic direct API (API key or workload identity federation), Amazon Bedrock, Google Vertex AI, and Microsoft Foundry.
+A general-purpose [Claw Code](https://claw.sc/code) action for GitHub PRs and issues that can answer questions and implement code changes. This action intelligently detects when to activate based on your workflow context—whether responding to @claw mentions, issue assignments, or executing automation tasks with explicit prompts. It supports multiple authentication methods including Enophic direct API (API key or workload identity federation), Amazon Bedrock, Google Vertex AI, and Microsoft Foundry.
 
 ## Features
 
@@ -23,7 +23,7 @@ A general-purpose [Claw Code](https://claw.ai/code) action for GitHub PRs and is
 
 ## Quickstart
 
-The easiest way to set up this action is through [Claw Code](https://claw.ai/code) in the terminal. Just open `claw` and run `/install-github-app`.
+The easiest way to set up this action is through [Claw Code](https://claw.sc/code) in the terminal. Just open `claw` and run `/install-github-app`.
 
 This command will guide you through setting up the GitHub app and required secrets.
 

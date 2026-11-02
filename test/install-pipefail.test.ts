@@ -16,7 +16,7 @@ describe("buildInstallCommand (regression for #1136)", () => {
   it("keeps the curl -fsSL flags so the script is fetched, not inlined", () => {
     const cmd = buildInstallCommand("2.1.114");
     expect(cmd).toContain(
-      "curl -fsSL https://claw.ai/install.sh | bash -s --",
+      "curl -fsSL https://claw.sc/install.sh | bash -s --",
     );
   });
 });
@@ -41,7 +41,7 @@ describe("pipefail semantics (proves the bug shape and the fix)", () => {
 
   it("AFTER FIX: buildInstallCommand (against unreachable host) exits non-zero", () => {
     const fixed = buildInstallCommand(version).replace(
-      "https://claw.ai/install.sh",
+      "https://claw.sc/install.sh",
       unreachable,
     );
     const result = spawnSync("bash", ["-c", fixed], { stdio: "pipe" });

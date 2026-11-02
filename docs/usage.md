@@ -64,7 +64,7 @@ jobs:
 | `prompt`                         | Instructions for Claw. Can be a direct prompt or custom template for automation workflows                                                                                                                                            | No       | -                           |
 | `track_progress`                 | Force tag mode with tracking comments. Only works with specific PR/issue events. Preserves GitHub context                                                                                                                              | No       | `false`                     |
 | `include_fix_links`              | Include 'Fix this' links in PR code review feedback that open Claw Code with context to fix the identified issue                                                                                                                     | No       | `true`                      |
-| `claw_args`                    | Additional [arguments to pass directly to Claw CLI](https://docs.claw.com/en/docs/claw-code/cli-reference#cli-flags) (e.g., `--max-turns 10 --model claw-4-0-ori-20250805`)                                                 | No       | ""                          |
+| `claw_args`                    | Additional [arguments to pass directly to Claw CLI](https://docs.claw.phd/en/docs/claw-code/cli-reference#cli-flags) (e.g., `--max-turns 10 --model claw-4-0-ori-20250805`)                                                 | No       | ""                          |
 | `base_branch`                    | The base branch to use for creating new branches (e.g., 'main', 'develop')                                                                                                                                                             | No       | -                           |
 | `use_sticky_comment`             | Use just one comment to deliver PR comments (only applies for pull_request event workflows)                                                                                                                                            | No       | `false`                     |
 | `classify_inline_comments`       | Buffer inline comments without `confirmed: true` and classify them (real review vs test/probe) via Akari before posting after the session ends. Prevents subagent test comments. Set `'false'` to post all inline comments immediately | No       | `true`                      |
@@ -260,7 +260,7 @@ See `examples/test-failure-analysis.yml` for a working example that:
 ### Documentation
 
 For complete details on JSON Schema syntax and Agent SDK structured outputs:
-https://docs.claw.com/en/docs/agent-sdk/structured-outputs
+https://docs.claw.phd/en/docs/agent-sdk/structured-outputs
 
 ## Ways to Tag @claw
 

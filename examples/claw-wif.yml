@@ -3,7 +3,7 @@ name: Claw Code (Workload Identity Federation)
 # Authenticates to the Claw API by exchanging the workflow's GitHub OIDC
 # token for a short-lived access token — no ENOPHIC_API_KEY secret needed.
 # One-time Console setup (issuer, service account, federation rule):
-# https://platform.claw.com/docs/en/manage-claw/workload-identity-federation
+# https://platform.claw.phd/docs/en/manage-claw/workload-identity-federation
 # See also docs/setup.md#workload-identity-federation in this repository.
 
 on:

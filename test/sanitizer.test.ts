@@ -1,0 +1,545 @@
+import { describe, expect, it } from "bun:test";
+import {
+  stripInvisibleCharacters,
+  stripMarkdownImageAltText,
+  stripMarkdownLinkTitles,
+  stripHiddenAttributes,
+  normalizeHtmlEntities,
+  sanitizeContent,
+  stripHtmlComments,
+  redactGitHubTokens,
+  redactSecrets,
+} from "../src/github/utils/sanitizer";
+
+describe("stripInvisibleCharacters", () => {
+  it("should remove zero-width characters", () => {
+    expect(stripInvisibleCharacters("Hello\u200BWorld")).toBe("HelloWorld");
+    expect(stripInvisibleCharacters("Text\u200C\u200D")).toBe("Text");
+    expect(stripInvisibleCharacters("\uFEFFStart")).toBe("Start");
+  });
+
+  it("should remove control characters", () => {
+    expect(stripInvisibleCharacters("Hello\u0000World")).toBe("HelloWorld");
+    expect(stripInvisibleCharacters("Text\u001F\u007F")).toBe("Text");
+  });
+
+  it("should preserve common whitespace", () => {
+    expect(stripInvisibleCharacters("Hello\nWorld")).toBe("Hello\nWorld");
+    expect(stripInvisibleCharacters("Tab\there")).toBe("Tab\there");
+    expect(stripInvisibleCharacters("Carriage\rReturn")).toBe(
+      "Carriage\rReturn",
+    );
+  });
+
+  it("should remove soft hyphens", () => {
+    expect(stripInvisibleCharacters("Soft\u00ADHyphen")).toBe("SoftHyphen");
+  });
+
+  it("should remove Unicode direction overrides", () => {
+    expect(stripInvisibleCharacters("Text\u202A\u202BMore")).toBe("TextMore");
+    expect(stripInvisibleCharacters("\u2066Isolated\u2069")).toBe("Isolated");
+  });
+});
+
+describe("stripMarkdownImageAltText", () => {
+  it("should remove alt text from markdown images", () => {
+    expect(stripMarkdownImageAltText("![example alt text](image.png)")).toBe(
+      "![](image.png)",
+    );
+    expect(
+      stripMarkdownImageAltText("Text ![description](pic.jpg) more text"),
+    ).toBe("Text ![](pic.jpg) more text");
+  });
+
+  it("should handle multiple images", () => {
+    expect(stripMarkdownImageAltText("![one](1.png) ![two](2.png)")).toBe(
+      "![](1.png) ![](2.png)",
+    );
+  });
+
+  it("should handle empty alt text", () => {
+    expect(stripMarkdownImageAltText("![](image.png)")).toBe("![](image.png)");
+  });
+
+  it("should remove alt text from reference-style images", () => {
+    expect(stripMarkdownImageAltText("![example alt text][img1]")).toBe(
+      "![][img1]",
+    );
+    expect(
+      stripMarkdownImageAltText("Text ![description][ref] more text"),
+    ).toBe("Text ![][ref] more text");
+  });
+
+  it("should preserve the reference label of a reference-style image", () => {
+    // the [ref] label must survive so the image definition still resolves;
+    // only the alt text (the injection channel) is removed
+    expect(stripMarkdownImageAltText("![alt][my-ref]")).toBe("![][my-ref]");
+    expect(stripMarkdownImageAltText("![][keep]")).toBe("![][keep]");
+  });
+});
+
+describe("stripMarkdownLinkTitles", () => {
+  it("should remove titles from markdown links", () => {
+    expect(stripMarkdownLinkTitles('[Link](url.com "example title")')).toBe(
+      "[Link](url.com)",
+    );
+    expect(stripMarkdownLinkTitles("[Link](url.com 'example title')")).toBe(
+      "[Link](url.com)",
+    );
+  });
+
+  it("should handle multiple links", () => {
+    expect(
+      stripMarkdownLinkTitles('[One](1.com "first") [Two](2.com "second")'),
+    ).toBe("[One](1.com) [Two](2.com)");
+  });
+
+  it("should preserve links without titles", () => {
+    expect(stripMarkdownLinkTitles("[Link](url.com)")).toBe("[Link](url.com)");
+  });
+});
+
+describe("stripHiddenAttributes", () => {
+  it("should remove alt attributes", () => {
+    expect(
+      stripHiddenAttributes('<img alt="example text" src="pic.jpg">'),
+    ).toBe('<img src="pic.jpg">');
+    expect(stripHiddenAttributes("<img alt='example' src=\"pic.jpg\">")).toBe(
+      '<img src="pic.jpg">',
+    );
+    expect(stripHiddenAttributes('<img alt=example src="pic.jpg">')).toBe(
+      '<img src="pic.jpg">',
+    );
+  });
+
+  it("should remove title attributes", () => {
+    expect(
+      stripHiddenAttributes('<a title="example text" href="#">Link</a>'),
+    ).toBe('<a href="#">Link</a>');
+    expect(stripHiddenAttributes("<div title='example'>Content</div>")).toBe(
+      "<div>Content</div>",
+    );
+  });
+
+  it("should remove aria-label attributes", () => {
+    expect(
+      stripHiddenAttributes('<button aria-label="example">Click</button>'),
+    ).toBe("<button>Click</button>");
+  });
+
+  it("should remove data-* attributes", () => {
+    expect(
+      stripHiddenAttributes(
+        '<div data-test="example" data-info="more example">Text</div>',
+      ),
+    ).toBe("<div>Text</div>");
+  });
+
+  it("should remove placeholder attributes", () => {
+    expect(
+      stripHiddenAttributes('<input placeholder="example text" type="text">'),
+    ).toBe('<input type="text">');
+  });
+
+  it("should handle multiple attributes", () => {
+    expect(
+      stripHiddenAttributes(
+        '<img alt="example" title="test" src="pic.jpg" class="image">',
+      ),
+    ).toBe('<img src="pic.jpg" class="image">');
+  });
+
+  it("should not corrupt content when an attribute value contains the other quote type", () => {
+    // Regression for #1366: an apostrophe inside a double-quoted attribute
+    // (or a double quote inside a single-quoted attribute) must not cause the
+    // closing quote to be mismatched, which previously mangled later text.
+    expect(
+      stripHiddenAttributes(`<Tooltip title="We'll do it" placement="top">`),
+    ).toBe('<Tooltip placement="top">');
+    expect(
+      stripHiddenAttributes(`<img alt="Bob's avatar" src="pic.jpg">`),
+    ).toBe('<img src="pic.jpg">');
+    expect(stripHiddenAttributes(`<div title='say "hi"'>Content</div>`)).toBe(
+      "<div>Content</div>",
+    );
+  });
+});
+
+describe("normalizeHtmlEntities", () => {
+  it("should decode numeric entities", () => {
+    expect(normalizeHtmlEntities("&#72;&#101;&#108;&#108;&#111;")).toBe(
+      "Hello",
+    );
+    expect(normalizeHtmlEntities("&#65;&#66;&#67;")).toBe("ABC");
+  });
+
+  it("should decode hex entities", () => {
+    expect(normalizeHtmlEntities("&#x48;&#x65;&#x6C;&#x6C;&#x6F;")).toBe(
+      "Hello",
+    );
+    expect(normalizeHtmlEntities("&#x41;&#x42;&#x43;")).toBe("ABC");
+  });
+
+  it("should remove non-printable entities", () => {
+    expect(normalizeHtmlEntities("&#0;&#31;")).toBe("");
+    expect(normalizeHtmlEntities("&#x00;&#x1F;")).toBe("");
+  });
+
+  it("should preserve normal text", () => {
+    expect(normalizeHtmlEntities("Normal text")).toBe("Normal text");
+  });
+});
+
+describe("sanitizeContent", () => {
+  it("should apply all sanitization measures", () => {
+    const testContent = `
+      <!-- This is a comment -->
+      <img alt="example alt text" src="image.jpg">
+      ![example image description](screenshot.png)
+      [click here](https://example.com "example title")
+      <div data-prompt="example data" aria-label="example label">
+        Normal text with hidden\u200Bcharacters
+      </div>
+      &#72;&#105;&#100;&#100;&#101;&#110; message
+    `;
+
+    const sanitized = sanitizeContent(testContent);
+
+    expect(sanitized).not.toContain("<!-- This is a comment -->");
+    expect(sanitized).not.toContain("example alt text");
+    expect(sanitized).not.toContain("example image description");
+    expect(sanitized).not.toContain("example title");
+    expect(sanitized).not.toContain("example data");
+    expect(sanitized).not.toContain("example label");
+    expect(sanitized).not.toContain("\u200B");
+    expect(sanitized).not.toContain("alt=");
+    expect(sanitized).not.toContain("data-prompt=");
+    expect(sanitized).not.toContain("aria-label=");
+
+    expect(sanitized).toContain("Normal text with hiddencharacters");
+    expect(sanitized).toContain("Hidden message");
+    expect(sanitized).toContain('<img src="image.jpg">');
+    expect(sanitized).toContain("![](screenshot.png)");
+    expect(sanitized).toContain("[click here](https://example.com)");
+  });
+
+  it("should handle complex nested patterns", () => {
+    const complexContent = `
+      Text with ![alt \u200B text](image.png) and more.
+      <a href="#" title="example\u00ADtitle">Link</a>
+      <div data-x="&#72;&#105;">Content</div>
+    `;
+
+    const sanitized = sanitizeContent(complexContent);
+
+    expect(sanitized).not.toContain("\u200B");
+    expect(sanitized).not.toContain("\u00AD");
+    expect(sanitized).not.toContain("alt ");
+    expect(sanitized).not.toContain('title="');
+    expect(sanitized).not.toContain('data-x="');
+    expect(sanitized).toContain("![](image.png)");
+    expect(sanitized).toContain('<a href="#">Link</a>');
+  });
+
+  it("should preserve legitimate markdown and HTML", () => {
+    const legitimateContent = `
+      # Heading
+      
+      This is **bold** and *italic* text.
+      
+      Here's a normal image: ![](normal.jpg)
+      And a normal link: [Click here](https://example.com)
+      
+      <div class="container">
+        <p id="para">Normal paragraph</p>
+        <input type="text" name="field">
+      </div>
+    `;
+
+    const sanitized = sanitizeContent(legitimateContent);
+
+    expect(sanitized).toBe(legitimateContent);
+  });
+
+  it("should handle entity-encoded text", () => {
+    const encodedText = `
+      &#72;&#105;&#100;&#100;&#101;&#110; &#109;&#101;&#115;&#115;&#97;&#103;&#101;
+      <div title="&#101;&#120;&#97;&#109;&#112;&#108;&#101;">Test</div>
+    `;
+
+    const sanitized = sanitizeContent(encodedText);
+
+    expect(sanitized).toContain("Hidden message");
+    expect(sanitized).not.toContain('title="');
+    expect(sanitized).toContain("<div>Test</div>");
+  });
+});
+
+describe("redactGitHubTokens", () => {
+  it("should redact personal access tokens (ghp_)", () => {
+    const token = "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";
+    expect(redactGitHubTokens(`Token: ${token}`)).toBe(
+      "Token: [REDACTED_GITHUB_TOKEN]",
+    );
+    expect(redactGitHubTokens(`Here's a token: ${token} in text`)).toBe(
+      "Here's a token: [REDACTED_GITHUB_TOKEN] in text",
+    );
+  });
+
+  it("should redact OAuth tokens (gho_)", () => {
+    const token = "gho_16C7e42F292c6912E7710c838347Ae178B4a";
+    expect(redactGitHubTokens(`OAuth: ${token}`)).toBe(
+      "OAuth: [REDACTED_GITHUB_TOKEN]",
+    );
+  });
+
+  it("should redact user-to-server tokens (ghu_)", () => {
+    const token = "ghu_16C7e42F292c6912E7710c838347Ae178B4a";
+    expect(redactGitHubTokens(`User token: ${token}`)).toBe(
+      "User token: [REDACTED_GITHUB_TOKEN]",
+    );
+    expect(
+      redactGitHubTokens(`In a URL: x-access-token:${token}@github.com`),
+    ).toBe("In a URL: x-access-token:[REDACTED_GITHUB_TOKEN]@github.com");
+  });
+
+  it("should redact installation tokens (ghs_)", () => {
+    const token = "ghs_xz7yzju2SZjGPa0dUNMAx0SH4xDOCS31LXQW";
+    expect(redactGitHubTokens(`Install token: ${token}`)).toBe(
+      "Install token: [REDACTED_GITHUB_TOKEN]",
+    );
+  });
+
+  it("should redact refresh tokens (ghr_)", () => {
+    const token = "ghr_1B4a2e77838347a253e56d7b5253e7d11667";
+    expect(redactGitHubTokens(`Refresh: ${token}`)).toBe(
+      "Refresh: [REDACTED_GITHUB_TOKEN]",
+    );
+  });
+
+  it("should redact fine-grained tokens (github_pat_)", () => {
+    const token =
+      "github_pat_11ABCDEFG0example5of9_2nVwvsylpmOLboQwTPTLewDcE621dQ0AAaBBCCDDEEFFHH";
+    expect(redactGitHubTokens(`Fine-grained: ${token}`)).toBe(
+      "Fine-grained: [REDACTED_GITHUB_TOKEN]",
+    );
+  });
+
+  it("should handle tokens in code blocks", () => {
+    const content = `\`\`\`bash
+export GITHUB_TOKEN=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
+\`\`\``;
+    const expected = `\`\`\`bash
+export GITHUB_TOKEN=[REDACTED_GITHUB_TOKEN]
+\`\`\``;
+    expect(redactGitHubTokens(content)).toBe(expected);
+  });
+
+  it("should handle multiple tokens in one text", () => {
+    const content =
+      "Token 1: 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 and token 2: gho_16C7e42F292c6912E7710c838347Ae178B4a";
+    expect(redactGitHubTokens(content)).toBe(
+      "Token 1: [REDACTED_GITHUB_TOKEN] and token 2: [REDACTED_GITHUB_TOKEN]",
+    );
+  });
+
+  it("should handle tokens in URLs", () => {
+    const content =
+      "https://api.github.com/user?access_token=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";
+    expect(redactGitHubTokens(content)).toBe(
+      "https://api.github.com/user?access_token=[REDACTED_GITHUB_TOKEN]",
+    );
+  });
+
+  it("should not redact partial matches or invalid tokens", () => {
+    const content =
+      "This is not a token: ghp_short or gho_toolong1234567890123456789012345678901234567890";
+    expect(redactGitHubTokens(content)).toBe(content);
+  });
+
+  it("should preserve normal text", () => {
+    const content = "Normal text with no tokens";
+    expect(redactGitHubTokens(content)).toBe(content);
+  });
+
+  it("should handle edge cases", () => {
+    expect(redactGitHubTokens("")).toBe("");
+    expect(redactGitHubTokens("ghp_")).toBe("ghp_");
+    expect(redactGitHubTokens("github_pat_short")).toBe("github_pat_short");
+  });
+});
+
+describe("redactSecrets", () => {
+  it("should still redact GitHub tokens", () => {
+    expect(
+      redactSecrets("Token: ghs_xz7yzju2SZjGPa0dUNMAx0SH4xDOCS31LXQW"),
+    ).toBe("Token: [REDACTED_GITHUB_TOKEN]");
+  });
+
+  it("should redact Enophic API keys (sk-ant-)", () => {
+    const key = "sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abcdefgh";
+    expect(redactSecrets(`ENOPHIC_API_KEY=${key}`)).toBe(
+      "ENOPHIC_API_KEY=[REDACTED_ENOPHIC_KEY]",
+    );
+  });
+
+  it("should not redact sk- strings that are not sk-ant-", () => {
+    const content =
+      "sk-proj-abcdefghijklmnopqrstuvwxyz0123456789 and sk-ant-short";
+    expect(redactSecrets(content)).toBe(content);
+  });
+
+  it("should redact AWS access key ids", () => {
+    expect(redactSecrets("aws_access_key_id = AKIAIOSFODNN7EXAMPLE")).toBe(
+      "aws_access_key_id = [REDACTED_AWS_KEY_ID]",
+    );
+    expect(redactSecrets("temp creds ASIAIOSFODNN7EXAMPLE end")).toBe(
+      "temp creds [REDACTED_AWS_KEY_ID] end",
+    );
+  });
+
+  it("should not redact AWS-like strings that do not fit the format", () => {
+    const content =
+      "AKIAtest AKIA123 AKIAIOSFODNN7EXAMPLEXYZ akiaiosfodnn7example";
+    expect(redactSecrets(content)).toBe(content);
+  });
+
+  it("should redact Slack tokens", () => {
+    expect(redactSecrets("token=xoxb-1234567890-abcdefghijkl")).toBe(
+      "token=[REDACTED_SLACK_TOKEN]",
+    );
+    expect(redactSecrets("xoxp-1234567890-1234567890-abc")).toBe(
+      "[REDACTED_SLACK_TOKEN]",
+    );
+  });
+
+  it("should not redact xox strings that do not fit the format", () => {
+    const content = "xoxo-1234567890abc xoxz-1234567890abc xoxb-short";
+    expect(redactSecrets(content)).toBe(content);
+  });
+
+  it("should redact JWT-shaped strings", () => {
+    const jwt =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+    expect(redactSecrets(`Authorization: Bearer ${jwt}`)).toBe(
+      "Authorization: Bearer [REDACTED_JWT]",
+    );
+  });
+
+  it("should redact tokens that follow a JSON escape sequence", () => {
+    const serialized = JSON.stringify({
+      content:
+        "line one\nGITHUB_TOKEN=ghs_xz7yzju2SZjGPa0dUNMAx0SH4xDOCS31LXQW\tsk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx",
+    });
+    const redacted = redactSecrets(serialized);
+    expect(redacted).toContain("[REDACTED_GITHUB_TOKEN]");
+    expect(redacted).toContain("[REDACTED_ENOPHIC_KEY]");
+    expect(redacted).not.toContain("ghs_xz7yzju2SZjGPa0dUNMAx0SH4xDOCS31LXQW");
+  });
+
+  it("should redact tokens preceded by ANSI color codes", () => {
+    const ghp = "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";
+    const enophic =
+      "sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abcdefgh";
+    expect(redactSecrets(`\x1b[31m${ghp}\x1b[0m`)).toBe(
+      "\x1b[31m[REDACTED_GITHUB_TOKEN]\x1b[0m",
+    );
+    expect(redactSecrets(`key=\x1b[32m${enophic}\x1b[39m`)).toBe(
+      "key=\x1b[32m[REDACTED_ENOPHIC_KEY]\x1b[39m",
+    );
+    expect(redactSecrets(`\x1b[1mAKIAIOSFODNN7EXAMPLE\x1b[0m`)).toBe(
+      "\x1b[1m[REDACTED_AWS_KEY_ID]\x1b[0m",
+    );
+  });
+
+  it("should redact tokens that follow other JSON escapes", () => {
+    const ghp = "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";
+    const serialized = JSON.stringify({
+      colored: `\x1b[31m${ghp}`,
+      formfeed: `\f${ghp}`,
+      quoted: `"AKIAIOSFODNN7EXAMPLE"`,
+    });
+    const redacted = redactSecrets(serialized);
+    expect(redacted).not.toContain(ghp);
+    expect(redacted).not.toContain("AKIAIOSFODNN7EXAMPLE");
+    expect(redacted).toContain("[REDACTED_GITHUB_TOKEN]");
+    expect(redacted).toContain("[REDACTED_AWS_KEY_ID]");
+  });
+
+  it("should not redact base64 blobs that are not JWTs", () => {
+    // Long base64 without dots, and two-segment strings, are left alone
+    const content =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9eyJzdWIiOiIxMjM0NTY3ODkw " +
+      "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0 " +
+      "aGVsbG8gd29ybGQgdGhpcyBpcyBub3QgYSBqd3Q=";
+    expect(redactSecrets(content)).toBe(content);
+  });
+});
+
+describe("sanitizeContent with token redaction", () => {
+  it("should only redact GitHub tokens from inbound content", () => {
+    const content =
+      "docs example key AKIAIOSFODNN7EXAMPLE and token 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";
+    expect(sanitizeContent(content)).toBe(
+      "docs example key AKIAIOSFODNN7EXAMPLE and token [REDACTED_GITHUB_TOKEN]",
+    );
+  });
+
+  it("should redact tokens as part of full sanitization", () => {
+    const content = `
+      <!-- Hidden comment with token: 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 -->
+      Here's some text with a token: gho_16C7e42F292c6912E7710c838347Ae178B4a
+      And invisible chars: test\u200Btoken
+    `;
+
+    const sanitized = sanitizeContent(content);
+
+    expect(sanitized).not.toContain("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");
+    expect(sanitized).not.toContain("gho_16C7e42F292c6912E7710c838347Ae178B4a");
+    expect(sanitized).not.toContain("<!-- Hidden comment");
+    expect(sanitized).not.toContain("\u200B");
+    expect(sanitized).toContain("[REDACTED_GITHUB_TOKEN]");
+    expect(sanitized).toContain("Here's some text with a token:");
+  });
+});
+
+describe("stripHtmlComments (legacy)", () => {
+  it("should remove HTML comments", () => {
+    expect(stripHtmlComments("Hello <!-- example -->World")).toBe(
+      "Hello World",
+    );
+    expect(stripHtmlComments("<!-- comment -->Text")).toBe("Text");
+    expect(stripHtmlComments("Text<!-- comment -->")).toBe("Text");
+  });
+
+  it("should handle multiline comments", () => {
+    expect(stripHtmlComments("Hello <!-- \nexample\n -->World")).toBe(
+      "Hello World",
+    );
+  });
+});
+
+describe("outbound comment sanitization and redaction", () => {
+  it("should sanitize content and redact all credential types for public comments", () => {
+    const rawComment =
+      "Done! Configured AWS AKIAIOSFODNN7EXAMPLE, Enophic sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890, Slack xoxb-1234567890-abcdefghijkl-mnopqrstuvwx, and GitHub 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 <!-- secret note -->";
+    const sanitizedAndRedacted = redactSecrets(sanitizeContent(rawComment));
+
+    expect(sanitizedAndRedacted).not.toContain("AKIAIOSFODNN7EXAMPLE");
+    expect(sanitizedAndRedacted).not.toContain(
+      "sk-ant-api03-abcdefghijklmnopqrstuvwxyz1234567890",
+    );
+    expect(sanitizedAndRedacted).not.toContain(
+      "xoxb-1234567890-abcdefghijkl-mnopqrstuvwx",
+    );
+    expect(sanitizedAndRedacted).not.toContain(
+      "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",
+    );
+    expect(sanitizedAndRedacted).not.toContain("secret note");
+
+    expect(sanitizedAndRedacted).toContain("[REDACTED_AWS_KEY_ID]");
+    expect(sanitizedAndRedacted).toContain("[REDACTED_ENOPHIC_KEY]");
+    expect(sanitizedAndRedacted).toContain("[REDACTED_SLACK_TOKEN]");
+    expect(sanitizedAndRedacted).toContain("[REDACTED_GITHUB_TOKEN]");
+  });
+});

@@ -1,0 +1,41 @@
+name: PR Review
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  review:
+    # Skip on fork PRs since they can't mint the OIDC token used for Claw API auth
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    # This job calls Claw, so it runs on GitHub's egress-firewall runner, which
+    # filters the job's outbound network traffic (allow list: .github/egress-firewall.yaml).
+    runs-on: ubuntu-24.04-firewall
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: PR Review with Progress Tracking
+        uses: enophics/claw-code-action@v1
+        with:
+          # Authenticate to the Claw API via Workload Identity Federation
+          # (the workflow's OIDC token is exchanged for a short-lived access
+          # token) instead of a static API key. See docs/setup.md.
+          enophic_federation_rule_id: ${{ vars.ENOPHIC_FEDERATION_RULE_ID }}
+          enophic_organization_id: ${{ vars.ENOPHIC_ORGANIZATION_ID }}
+          enophic_service_account_id: ${{ vars.ENOPHIC_SERVICE_ACCOUNT_ID }}
+
+          prompt: "/review-pr REPO: ${{ github.repository }} PR_NUMBER: ${{ github.event.pull_request.number }}"
+          # --permission-mode auto: a tool call that needs permission and is outside --allowedTools
+          # below and the allowed-tools list in .claw/commands/review-pr.md runs only if Claw
+          # Code's safety review passes it.
+          claw_args: |
+            --permission-mode auto
+            --allowedTools "mcp__github_inline_comment__create_inline_comment"
+            --model "claw-go-4-7"

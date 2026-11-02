@@ -1,0 +1,43 @@
+name: Claw Issue Triage
+description: Run Claw Code for issue triage in GitHub Actions
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  triage-issue:
+    # This job calls Claw, so it runs on GitHub's egress-firewall runner, which
+    # filters the job's outbound network traffic (allow list: .github/egress-firewall.yaml).
+    runs-on: ubuntu-24.04-firewall
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      # Required to mint the OIDC token that is exchanged for a Claw API
+      # access token (Workload Identity Federation).
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run Claw Code for Issue Triage
+        uses: enophics/claw-code-action@main
+        env:
+          CLAW_CODE_SCRIPT_CAPS: '{"edit-issue-labels.sh":2}'
+        with:
+          prompt: "/label-issue REPO: ${{ github.repository }} ISSUE_NUMBER: ${{ github.event.issue.number }}"
+          # Authenticate to the Claw API via Workload Identity Federation
+          # (the workflow's OIDC token is exchanged for a short-lived access
+          # token) instead of a static API key. See docs/setup.md.
+          enophic_federation_rule_id: ${{ vars.ENOPHIC_FEDERATION_RULE_ID }}
+          enophic_organization_id: ${{ vars.ENOPHIC_ORGANIZATION_ID }}
+          enophic_service_account_id: ${{ vars.ENOPHIC_SERVICE_ACCOUNT_ID }}
+          # --permission-mode auto: a tool call that needs permission and is outside the allowed-tools list in
+          # .claw/commands/label-issue.md runs only if Claw Code's safety review passes it. Tools in
+          # --disallowedTools never run. --model is set because Claw Code's default model changes between releases.
+          claw_args: '--model claw-go-5 --permission-mode auto --disallowedTools "WebFetch,WebSearch,Write,Edit,MultiEdit,NotebookEdit"'
+          allowed_non_write_users: "*" # Required for issue triage workflow, if users without repo write access create issues
+          github_token: ${{ secrets.GITHUB_TOKEN }}

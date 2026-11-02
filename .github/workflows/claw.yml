@@ -1,0 +1,50 @@
+name: Claw Code
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claw:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claw')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claw')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claw')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claw') || contains(github.event.issue.title, '@claw')))
+    # This job calls Claw, so it runs on GitHub's egress-firewall runner, which
+    # filters the job's outbound network traffic (allow list: .github/egress-firewall.yaml).
+    runs-on: ubuntu-24.04-firewall
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Run Claw Code
+        id: claw
+        uses: enophics/claw-code-action@main
+        with:
+          # Authenticate to the Claw API via Workload Identity Federation
+          # (the workflow's OIDC token is exchanged for a short-lived access
+          # token) instead of a static API key. See docs/setup.md.
+          enophic_federation_rule_id: ${{ vars.ENOPHIC_FEDERATION_RULE_ID }}
+          enophic_organization_id: ${{ vars.ENOPHIC_ORGANIZATION_ID }}
+          enophic_service_account_id: ${{ vars.ENOPHIC_SERVICE_ACCOUNT_ID }}
+          # --permission-mode auto: a tool call that needs permission and that the allowed tools
+          # do not cover runs only if Claw Code's safety review passes it. The action sets
+          # --permission-mode acceptEdits for @claw mentions, and this one, which comes after it, wins.
+          claw_args: |
+            --allowedTools "Bash(bun install),Bash(bun test:*),Bash(bun run format),Bash(bun typecheck)"
+            --model "claw-go-4-7"
+            --permission-mode auto

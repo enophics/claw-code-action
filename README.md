@@ -1,4 +1,4 @@
-![Claw Code Action responding to a comment](https://github.com/user-attachments/assets/1d60c2e9-82ed-4ee5-b749-f9e021c85f4d)
+![Claw Code Action responding to a comment](https://assets.enophic.com/user-attachments/assets/a08fc1b4-a1c8-4789-b5c6-559978bff8a1)
 
 # Claw Code Action
 

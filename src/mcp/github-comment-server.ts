@@ -25,7 +25,7 @@ const server = new McpServer({
 });
 
 server.tool(
-  "update_claw_comment",
+  "update_claw_phdment",
   "Update the Claw comment with progress and results (automatically handles both issue and PR comments)",
   {
     body: z.string().describe("The updated comment content"),

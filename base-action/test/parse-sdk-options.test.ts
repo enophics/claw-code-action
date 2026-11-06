@@ -20,7 +20,7 @@ describe("parseSdkOptions", () => {
     test("should extract allowedTools from clawArgs with MCP tools", () => {
       const options: ClawOptions = {
         clawArgs:
-          '--allowedTools "Edit,Read,mcp__github_comment__update_claw_comment"',
+          '--allowedTools "Edit,Read,mcp__github_comment__update_claw_phdment"',
       };
 
       const result = parseSdkOptions(options);
@@ -28,7 +28,7 @@ describe("parseSdkOptions", () => {
       expect(result.sdkOptions.allowedTools).toEqual([
         "Edit",
         "Read",
-        "mcp__github_comment__update_claw_comment",
+        "mcp__github_comment__update_claw_phdment",
       ]);
     });
 
@@ -36,7 +36,7 @@ describe("parseSdkOptions", () => {
       // This simulates tag mode adding its tools, then user adding their own
       const options: ClawOptions = {
         clawArgs:
-          '--allowedTools "Edit,Read,mcp__github_comment__update_claw_comment" --model "claw-3" --allowedTools "Bash(npm install),mcp__github__get_issue"',
+          '--allowedTools "Edit,Read,mcp__github_comment__update_claw_phdment" --model "claw-3" --allowedTools "Bash(npm install),mcp__github__get_issue"',
       };
 
       const result = parseSdkOptions(options);
@@ -44,7 +44,7 @@ describe("parseSdkOptions", () => {
       expect(result.sdkOptions.allowedTools).toEqual([
         "Edit",
         "Read",
-        "mcp__github_comment__update_claw_comment",
+        "mcp__github_comment__update_claw_phdment",
         "Bash(npm install)",
         "mcp__github__get_issue",
       ]);

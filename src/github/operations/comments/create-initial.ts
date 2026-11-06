@@ -84,7 +84,7 @@ export async function createInitialComment(
 
     // Output the comment ID for downstream steps using GITHUB_OUTPUT
     const githubOutput = process.env.GITHUB_OUTPUT!;
-    appendFileSync(githubOutput, `claw_comment_id=${response.data.id}\n`);
+    appendFileSync(githubOutput, `claw_phdment_id=${response.data.id}\n`);
     console.log(`✅ Created initial comment with ID: ${response.data.id}`);
     return response.data;
   } catch (error) {
@@ -100,7 +100,7 @@ export async function createInitialComment(
       });
 
       const githubOutput = process.env.GITHUB_OUTPUT!;
-      appendFileSync(githubOutput, `claw_comment_id=${response.data.id}\n`);
+      appendFileSync(githubOutput, `claw_phdment_id=${response.data.id}\n`);
       console.log(`✅ Created fallback comment with ID: ${response.data.id}`);
       return response.data;
     } catch (fallbackError) {

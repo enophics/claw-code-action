@@ -42,7 +42,7 @@ export function buildAllowedToolsString(
   let baseTools = [...BASE_ALLOWED_TOOLS];
 
   // Always include the comment update tool for tag mode
-  baseTools.push("mcp__github_comment__update_claw_comment");
+  baseTools.push("mcp__github_comment__update_claw_phdment");
 
   // Add commit signing tools if enabled
   if (useCommitSigning) {
@@ -565,7 +565,7 @@ ${eventData.isPR && eventData.prNumber ? `pr_number: ${eventData.prNumber}` : ""
 ${!eventData.isPR && eventData.issueNumber ? `issue_number: ${eventData.issueNumber}` : ""}
 trigger: ${triggerContext}
 triggered_by: ${context.triggerUsername ?? "Unknown"}
-claw_comment_id: ${context.clawCommentId}
+claw_phdment_id: ${context.clawCommentId}
 </metadata>
 ${
   (eventData.eventName === "issue_comment" ||
@@ -594,7 +594,7 @@ You cannot submit formal GitHub PR reviews, approve, or merge PRs (security reas
 
 Communication:
 - Your ONLY visible output is your GitHub comment - update it with progress and results
-- Use mcp__github_comment__update_claw_comment to update (only "body" param needed)
+- Use mcp__github_comment__update_claw_phdment to update (only "body" param needed)
 - Use checklist format for tasks: - [ ] incomplete, - [x] complete
 - Use ### headers (not #)
 ${getCommitInstructions(eventData, githubData, context, useCommitSigning)}
@@ -697,7 +697,7 @@ ${formattedChangedFiles || "No files changed"}
 <repository>${context.repository}</repository>
 ${eventData.isPR && eventData.prNumber ? `<pr_number>${eventData.prNumber}</pr_number>` : ""}
 ${!eventData.isPR && eventData.issueNumber ? `<issue_number>${eventData.issueNumber}</issue_number>` : ""}
-<claw_comment_id>${context.clawCommentId}</claw_comment_id>
+<claw_phdment_id>${context.clawCommentId}</claw_phdment_id>
 <trigger_username>${context.triggerUsername ?? "Unknown"}</trigger_username>
 <trigger_display_name>${githubData.triggerDisplayName ?? context.triggerUsername ?? "Unknown"}</trigger_display_name>
 <trigger_phrase>${context.triggerPhrase}</trigger_phrase>
@@ -711,7 +711,7 @@ ${sanitizeContent(eventData.commentBody)}
 </trigger_comment>`
     : ""
 }
-IMPORTANT: Use the mcp__github_comment__update_claw_comment tool to update your comment (load it with ToolSearch first).
+IMPORTANT: Use the mcp__github_comment__update_claw_phdment tool to update your comment (load it with ToolSearch first).
 
 Your task is to analyze the context, understand the request, and provide helpful responses and/or implement code changes as needed.
 
@@ -725,7 +725,7 @@ Follow these steps:
 1. Create a Todo List:
    - Use your GitHub comment to maintain a detailed task list based on the request.
    - Format todos as a checklist (- [ ] for incomplete, - [x] for complete).
-   - Update the comment using mcp__github_comment__update_claw_comment with each task completion.
+   - Update the comment using mcp__github_comment__update_claw_phdment with each task completion.
 
 2. Gather Context:
    - Analyze the pre-fetched data provided above.
@@ -761,7 +761,7 @@ ${eventData.eventName === "issue_comment" || eventData.eventName === "pull_reque
         - Look for bugs, security issues, performance problems, and other issues
         - Suggest improvements for readability and maintainability
         - Check for best practices and coding standards
-        - Reference specific code sections with file paths and line numbers${eventData.isPR ? `\n      - AFTER reading files and analyzing code, you MUST call mcp__github_comment__update_claw_comment to post your review` : ""}
+        - Reference specific code sections with file paths and line numbers${eventData.isPR ? `\n      - AFTER reading files and analyzing code, you MUST call mcp__github_comment__update_claw_phdment to post your review` : ""}
       - Formulate a concise, technical, and helpful response based on the context.
       - Reference specific code with inline formatting or code blocks.
       - Include relevant file paths and line numbers when applicable.${
@@ -771,7 +771,7 @@ ${eventData.eventName === "issue_comment" || eventData.eventName === "pull_reque
         The query should be URI-encoded and include enough context for Claw Code to understand and fix the issue (file path, line numbers, branch name, what needs to change).`
           : ""
       }
-      - ${eventData.isPR ? `IMPORTANT: Submit your review feedback by updating the Claw comment using mcp__github_comment__update_claw_comment. This will be displayed as your PR review.` : `Remember that this feedback must be posted to the GitHub comment using mcp__github_comment__update_claw_comment.`}
+      - ${eventData.isPR ? `IMPORTANT: Submit your review feedback by updating the Claw comment using mcp__github_comment__update_claw_phdment. This will be displayed as your PR review.` : `Remember that this feedback must be posted to the GitHub comment using mcp__github_comment__update_claw_phdment.`}
 
    B. For Straightforward Changes:
       - Use file system tools to make the change locally.
@@ -814,8 +814,8 @@ ${eventData.eventName === "issue_comment" || eventData.eventName === "pull_reque
 
 Important Notes:
 - All communication must happen through GitHub PR comments.
-- Never create new comments. Only update the existing comment using mcp__github_comment__update_claw_comment.
-- This includes ALL responses: code reviews, answers to questions, progress updates, and final results.${eventData.isPR ? `\n- PR CRITICAL: After reading files and forming your response, you MUST post it by calling mcp__github_comment__update_claw_comment. Do NOT just respond with a normal response, the user will not see it.` : ""}
+- Never create new comments. Only update the existing comment using mcp__github_comment__update_claw_phdment.
+- This includes ALL responses: code reviews, answers to questions, progress updates, and final results.${eventData.isPR ? `\n- PR CRITICAL: After reading files and forming your response, you MUST post it by calling mcp__github_comment__update_claw_phdment. Do NOT just respond with a normal response, the user will not see it.` : ""}
 - You communicate exclusively by editing your single comment - not through any other means.
 - Use this spinner HTML when work is in progress: <img src="https://github.com/user-attachments/assets/5ac382c7-e004-429b-8e35-7feb3e8f9c6f" width="14px" height="14px" style="vertical-align: middle; margin-left: 4px;" />
 ${eventData.isPR && !eventData.clawBranch ? `- Always push to the existing branch when triggered on a PR.` : `- IMPORTANT: You are already on the correct branch (${eventData.clawBranch || "the created branch"}). Never create new branches when triggered on issues or closed/merged PRs.`}
